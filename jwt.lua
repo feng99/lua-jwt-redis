@@ -96,7 +96,7 @@ if token == nil then
 end
 
 --解析token  
-local jwt_obj = jwt:load_jwt('R6v7TUC0Xj0nCPzZDwkrgKAqjxZrWUPR', token)
+local jwt_obj = jwt:load_jwt('R6v7TUC0Xj0nCPzZDwXXXXXXXXXX', token)
 --ngx.say(cjson.encode(jwt_obj));
 if not jwt_obj.valid then
     ngx.status = ngx.HTTP_UNAUTHORIZED
