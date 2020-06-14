@@ -1,19 +1,9 @@
---api白名单处理
+--接口地址白名单
 arr = {}
-arr["/index/index"]    = 1;
-arr["/user/login/v1"]    = 1;
+arr["/index/login"]    = 1;
 arr["/index/register"] = 1;
-arr["/sms/getCode/v1"] = 1;
-arr["/user/weChatLogin/v1"] = 1;
-arr["/ryun/userStatus/v1"] = 1;
+arr["/test/index"] = 1;
 local requesturi = ngx.var.request_uri;
-local testpath = string.find(requesturi, "test/", 1);
-
---跳过/test/测试接口
-if testpath ~= nil then
-   ngx.exit(ngx.OK)
-end
-
 local ishit = arr[requesturi];
 if ishit == 1 then
   ngx.exit(ngx.OK)
@@ -22,6 +12,10 @@ end
 
 --从redis中查询数据的函数
 local function redkey(kid, key)
+    -- get key from redis
+    -- nil  (something went wrong, let the request pass)
+    -- null (no such key, reject the request)
+    -- key  (the key)
 
     local redis = require "resty.redis"
     local red = redis:new()
@@ -49,9 +43,17 @@ local function redkey(kid, key)
         end
     end
 
+    --hash hget
+    --存储为hash结构 时间计算比较麻烦 且官方不推荐使用自带的时间函数
+--[[    local res, err = red:hget(kid, key)
+    if not res then
+        ngx.log(ngx.ERR, "failed to get kid: ", kid ,", ", err)
+        return nil
+    end
+--]]
+
     --string get
-    local res, err = red:get(kid..":"..key)
-    --ngx.log(res)
+    local res, err = red:get(kid..key)
     if not res then
         ngx.log(ngx.ERR, "failed to get kid: ", kid ,", ", err)
         return nil
@@ -73,7 +75,7 @@ end
 
 
 
---local jwt = require "resty.jwt";
+local jwt = require "resty.jwt";
 local cjson = require("cjson");
 
 ngx.log(ngx.INFO,ngx.var.http_Authorization);
@@ -93,16 +95,31 @@ if token == nil then
     ngx.exit(ngx.HTTP_UNAUTHORIZED)
 end
 
-
-
-local user_id = redkey('jwt', token)
-if user_id == ngx.null then
-   	ngx.status = ngx.HTTP_UNAUTHORIZED
-   	ngx.say("{error: 'token not found'}")
-   	ngx.exit(ngx.HTTP_UNAUTHORIZED)
-else
-	--修改请求头信息 增加自定义字段 向后传递给业务服务
-  	--ngx.req.set_header('Authorization', "Bearer "..private_jwt)
-    ngx.req.set_header('userId',user_id)
+--解析token  
+local jwt_obj = jwt:load_jwt('R6v7TUC0Xj0nCPzZDwXXXXXXXXXX', token)
+--ngx.say(cjson.encode(jwt_obj));
+if not jwt_obj.valid then
+    ngx.status = ngx.HTTP_UNAUTHORIZED
+    ngx.say("{error: 'invalid token (101)'}")
+    ngx.exit(ngx.HTTP_UNAUTHORIZED)
 end
 
+--解析userId数据
+local userId = jwt_obj.payload['userId']
+--从redis中根据userId查询token
+if userId > 0 then
+    local private_jwt = redkey('jwt', userId)
+    if private_jwt == ngx.null then
+        ngx.status = ngx.HTTP_UNAUTHORIZED
+        ngx.say("{error: 'session not found'}")
+        ngx.exit(ngx.HTTP_UNAUTHORIZED)
+    else
+	--修改请求头信息 增加自定义字段 向后传递给业务服务
+        ngx.req.set_header('Authorization', "Bearer "..private_jwt)
+        ngx.req.set_header('userId',userId)
+    end
+else
+    ngx.status = ngx.HTTP_UNAUTHORIZED
+    ngx.say("{error: '"..jwt_obj.reason.."'}")
+    ngx.exit(ngx.HTTP_UNAUTHORIZED)
+end

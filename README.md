@@ -4,13 +4,25 @@
 
 理论上可 拷贝直接使用.
 
-提供接口白名单功能
+1.提供接口白名单功能  
 
-[TOC]
+支持精准匹配  如/user/login/v1
+
+支持模糊匹配  比如/test/开头的地址 都加入白名单
+
+
+
+
 
 # 版本说明
 
 nginx version: openresty/1.15.8.3
+
+# 功能说明
+
+1.
+
+
 
 # 代码逻辑说明
 
@@ -151,5 +163,7 @@ public function jwtDecodeAction()
 不传递jwt token  返回401
 
 ![image-20200526102152286](http://qa3sq0khl.bkt.clouddn.com/image-20200526102152286.png)
+
+![](https://test-img2.oss-cn-beijing.aliyuncs.com/QQ截图20200614155035.png)
 
 # 有疑问请提issues 
